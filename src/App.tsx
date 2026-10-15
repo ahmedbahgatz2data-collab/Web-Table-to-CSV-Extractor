@@ -9,7 +9,8 @@ import { translations } from './utils/i18n.js';
 import { ExtractedTable, ExtractionOptions, BatchUrlItem } from './types/table.js';
 import { extractTablesFromHtml } from './utils/tableExtractor.js';
 import { createMergedCsvByTableTitle, downloadFile, sanitizeFilename } from './utils/csvExporter.js';
-import { AlertCircle, FileSpreadsheet, ExternalLink } from 'lucide-react';
+import { exportTablesByTitleToXlsx } from './utils/excelExporter.js';
+import { AlertCircle, FileSpreadsheet, ExternalLink, Sparkles } from 'lucide-react';
 
 export default function App() {
   const [activeNavTab, setActiveNavTab] = useState<'extractor' | 'ai' | 'guide'>('extractor');
@@ -221,18 +222,27 @@ export default function App() {
                 table={selectedTable}
                 onUpdateTable={handleUpdateTable}
                 onDownloadAllByTitle={
-                  tables.length > 1
-                    ? (title, includeBom) => {
-                        const mergedContent = createMergedCsvByTableTitle(
-                          batchItems.filter(item => item.status === 'success'),
-                          title,
-                          { delimiter: ',', includeBom: includeBom }
-                        );
-                        downloadFile(
-                          mergedContent,
-                          `merged_batch_${sanitizeFilename(title)}.csv`,
-                          'text/csv;charset=utf-8;'
-                        );
+                  batchItems.length > 0
+                    ? (title, format) => {
+                        const successBatch = batchItems.filter(item => item.status === 'success');
+                        if (format === 'xlsx') {
+                          exportTablesByTitleToXlsx(
+                            successBatch,
+                            title,
+                            `merged_batch_${sanitizeFilename(title)}_${new Date().toISOString().slice(0, 10)}.xlsx`
+                          );
+                        } else {
+                          const mergedContent = createMergedCsvByTableTitle(
+                            successBatch,
+                            title,
+                            { delimiter: ',', includeBom: true }
+                          );
+                          downloadFile(
+                            mergedContent,
+                            `merged_batch_${sanitizeFilename(title)}.csv`,
+                            'text/csv;charset=utf-8;'
+                          );
+                        }
                       }
                     : undefined
                 }

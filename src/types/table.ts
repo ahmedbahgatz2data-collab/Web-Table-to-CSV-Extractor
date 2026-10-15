@@ -10,6 +10,7 @@ export interface ExtractedTable {
   name: string;
   headers: string[];
   rows: string[][];
+  rowStyles?: { className?: string; color?: string; bgColor?: string; tag?: string; hexBg?: string; hexColor?: string }[];
   rowCount: number;
   colCount: number;
   rawHtmlSnippet?: string;
@@ -29,6 +30,7 @@ export interface ExtractionOptions {
   minRows: number;
   autoDetectHeaders: boolean;
   targetHeaderKeyword?: string;
+  extractRowStatus?: boolean;
 }
 
 export interface CsvExportOptions {

@@ -9,6 +9,7 @@ import {
   downloadFile,
   sanitizeFilename,
 } from '../utils/csvExporter.js';
+import { exportTableToXlsx } from '../utils/excelExporter.js';
 import {
   Download,
   Copy,
@@ -23,12 +24,13 @@ import {
   RotateCcw,
   Sparkles,
   Archive,
+  Tag,
 } from 'lucide-react';
 
 interface TableEditorProps {
   table: ExtractedTable;
   onUpdateTable: (updatedTable: ExtractedTable) => void;
-  onDownloadAllByTitle?: (title: string, includeBom: boolean) => void;
+  onDownloadAllByTitle?: (title: string, format: 'xlsx' | 'csv') => void;
 }
 
 export const TableEditor: React.FC<TableEditorProps> = ({
@@ -314,16 +316,35 @@ export const TableEditor: React.FC<TableEditorProps> = ({
         {/* Primary Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
           {onDownloadAllByTitle && (
-            <button
-              onClick={() => onDownloadAllByTitle(table.name, true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs sm:text-sm rounded-lg shadow-xs transition-colors shrink-0 cursor-pointer"
-              title={`Download all instances of ${table.name} across all batch URLs`}
-            >
-              <Archive className="w-4 h-4" />
-              <span>Download All '{table.name}' (Batch)</span>
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => onDownloadAllByTitle(table.name, 'xlsx')}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs sm:text-sm rounded-lg shadow-xs transition-colors cursor-pointer"
+                title="Download all instances across all URLs as Excel (.xlsx) with colors"
+              >
+                <Archive className="w-4 h-4" />
+                <span>All '{table.name}' (Excel)</span>
+              </button>
+              <button
+                onClick={() => onDownloadAllByTitle(table.name, 'csv')}
+                className="flex items-center gap-1 px-3 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-900 font-medium text-xs sm:text-sm rounded-lg transition-colors cursor-pointer"
+                title="Download all instances across all URLs as CSV"
+              >
+                <span>All '{table.name}' (CSV)</span>
+              </button>
+            </div>
           )}
 
+
+          {/* Download Excel (.xlsx) with Preserved Colors */}
+          <button
+            onClick={() => exportTableToXlsx(table)}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs sm:text-sm rounded-lg shadow-xs transition-colors shrink-0 cursor-pointer"
+            title="Download formatted Excel workbook with colored rows and custom styling preserved"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Download Excel (.xlsx)</span>
+          </button>
 
           {/* Download CSV with BOM (Direct) */}
           <button
@@ -515,15 +536,57 @@ export const TableEditor: React.FC<TableEditorProps> = ({
                 </td>
               </tr>
             ) : (
-              filteredRows.map(({ data: row, originalIndex }, displayRowIndex) => (
-                <tr
-                  key={originalIndex}
-                  className="hover:bg-blue-50/30 transition-colors group"
-                >
-                  {/* Row Number */}
-                  <td className="px-2.5 py-2 border-r border-slate-200 text-center font-mono tabular-nums text-slate-400 text-[11px] select-none bg-slate-50/50">
-                    {displayRowIndex + 1}
-                  </td>
+              filteredRows.map(({ data: row, originalIndex }, displayRowIndex) => {
+                const rowStyle = table.rowStyles?.[originalIndex];
+                const tag = rowStyle?.tag || rowStyle?.className || '';
+                const hexBg = rowStyle?.hexBg;
+                const hexColor = rowStyle?.hexColor;
+
+                const isNotRecommended = tag.toLowerCase().includes('notrecommended');
+                const isWarning = isNotRecommended || tag.toLowerCase().includes('warn') || tag.toLowerCase().includes('danger') || tag.toLowerCase().includes('obsolete');
+
+                const customRowStyle: React.CSSProperties = hexBg ? {
+                  backgroundColor: `#${hexBg}2A`,
+                  borderLeft: `4px solid #${hexBg}`,
+                } : {};
+
+                return (
+                  <tr
+                    key={originalIndex}
+                    style={customRowStyle}
+                    className={`transition-colors group ${
+                      !hexBg ? (
+                        isNotRecommended
+                          ? 'bg-amber-50/80 hover:bg-amber-100/70 border-l-4 border-l-amber-500'
+                          : isWarning
+                          ? 'bg-red-50/60 hover:bg-red-100/60 border-l-4 border-l-red-500'
+                          : 'hover:bg-blue-50/30'
+                      ) : 'hover:brightness-95'
+                    }`}
+                  >
+                    {/* Row Number & Status Tag */}
+                    <td className="px-2 py-2 border-r border-slate-200 text-center font-mono tabular-nums text-[11px] select-none bg-slate-50/60 text-slate-500">
+                      <div className="flex flex-col items-center justify-center gap-0.5">
+                        <span>{displayRowIndex + 1}</span>
+                        {hexBg && (
+                          <span
+                            style={{
+                              backgroundColor: `#${hexBg}`,
+                              color: hexColor ? `#${hexColor}` : '#1e293b',
+                            }}
+                            className="text-[9px] px-1 py-0.5 rounded font-semibold whitespace-nowrap leading-none shadow-2xs border border-black/10"
+                            title={`Detected Color: #${hexBg}${tag ? ` (${tag})` : ''}`}
+                          >
+                            {tag || 'Colored'}
+                          </span>
+                        )}
+                        {!hexBg && tag && (
+                          <span className="text-[9px] px-1 py-0.5 bg-slate-200 text-slate-800 rounded font-medium whitespace-nowrap leading-none">
+                            {tag}
+                          </span>
+                        )}
+                      </div>
+                    </td>
 
                   {/* Cell Data */}
                   {table.headers.map((_, colIndex) => {
@@ -586,8 +649,8 @@ export const TableEditor: React.FC<TableEditorProps> = ({
                     </button>
                   </td>
                 </tr>
-              ))
-            )}
+              );
+            }))}
           </tbody>
         </table>
       </div>

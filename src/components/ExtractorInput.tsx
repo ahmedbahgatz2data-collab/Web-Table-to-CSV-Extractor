@@ -176,6 +176,18 @@ export const ExtractorInput: React.FC<ExtractorInputProps> = ({
             <span className="text-slate-700">{t.autoDetectHeaders}</span>
           </label>
 
+          <label className="flex items-center gap-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={options.extractRowStatus ?? true}
+              onChange={(e) =>
+                setOptions({ ...options, extractRowStatus: e.target.checked })
+              }
+              className="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500"
+            />
+            <span className="text-slate-700">Extract Row Tags & Colors (e.g. NotRecommended)</span>
+          </label>
+
           <div className="flex items-center gap-2">
             <span className="text-slate-700 whitespace-nowrap">{t.minRows}:</span>
             <input

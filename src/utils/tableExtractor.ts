@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import { ExtractedTable, ExtractionOptions } from '../types/table.js';
+import { detectColorAndHighlight } from './colorUtils.js';
 
 /**
  * Clean text from cell, handling whitespace and nested breaks
@@ -58,12 +59,44 @@ export function extractTablesFromHtml(
 
     // Grid matrix algorithm to handle rowspans and colspans
     const grid: string[][] = [];
+    const rowStylesList: { className?: string; color?: string; bgColor?: string; tag?: string; hexBg?: string; hexColor?: string }[] = [];
     const $rows = $table.find('tr');
 
     $rows.each((rowIndex, rowElem) => {
       const $row = $(rowElem);
       const $cells = $row.find('> th, > td');
       if ($cells.length === 0) return;
+
+      const className = $row.attr('class')?.trim() || '';
+      const styleAttr = $row.attr('style')?.trim() || '';
+      const bgcolorAttr = $row.attr('bgcolor')?.trim() || '';
+
+      // 1. Detect row-level colors or semantic classes (e.g. NotRecommended, danger, inline style, bgcolor)
+      let highlight = detectColorAndHighlight(className, styleAttr, bgcolorAttr);
+
+      // 2. If row itself has no background color, inspect cells in this row to see if cells are colored
+      if (!highlight.hexBg) {
+        $cells.each((_, cellElem) => {
+          if (highlight.hexBg) return;
+          const $c = $(cellElem);
+          const cClass = $c.attr('class')?.trim() || '';
+          const cStyle = $c.attr('style')?.trim() || '';
+          const cBg = $c.attr('bgcolor')?.trim() || '';
+          const cellHighlight = detectColorAndHighlight(cClass, cStyle, cBg);
+          if (cellHighlight.hexBg) {
+            highlight = cellHighlight;
+          }
+        });
+      }
+
+      rowStylesList[rowIndex] = {
+        className: className || undefined,
+        color: highlight.hexColor ? `#${highlight.hexColor}` : undefined,
+        bgColor: highlight.hexBg ? `#${highlight.hexBg}` : undefined,
+        hexBg: highlight.hexBg || undefined,
+        hexColor: highlight.hexColor || undefined,
+        tag: highlight.tag || className || undefined,
+      };
 
       let colIndex = 0;
       if (!grid[rowIndex]) {
@@ -132,13 +165,22 @@ export function extractTablesFromHtml(
       return newRow;
     });
 
-    // Filter out completely empty rows
-    const nonEmptyRows = normalizedRows.filter(row => row.some(cell => cell.trim().length > 0));
+    // Filter out completely empty rows and track their style indices
+    const nonEmptyIndices: number[] = [];
+    const nonEmptyRows: string[][] = [];
+    normalizedRows.forEach((row, idx) => {
+      if (row.some(cell => cell.trim().length > 0)) {
+        nonEmptyRows.push(row);
+        nonEmptyIndices.push(idx);
+      }
+    });
+
     if (nonEmptyRows.length < minRows) return;
 
     // Separate headers from data rows
     let headers: string[] = [];
     let dataRows: string[][] = [];
+    let dataRowStyles: { className?: string; color?: string; bgColor?: string; tag?: string }[] = [];
 
     // Check if the table has explicit <th> or the first row acts as header
     const hasTheadTh = $table.find('thead th').length > 0 || $table.find('tr:first-child th').length > 0;
@@ -146,9 +188,11 @@ export function extractTablesFromHtml(
     if (autoDetectHeaders && (hasTheadTh || nonEmptyRows.length > 1)) {
       headers = nonEmptyRows[0].map((h, i) => h.trim() || `Column ${i + 1}`);
       dataRows = nonEmptyRows.slice(1);
+      dataRowStyles = nonEmptyIndices.slice(1).map(idx => rowStylesList[idx] || {});
     } else {
       headers = Array.from({ length: maxCols }, (_, i) => `Column ${i + 1}`);
       dataRows = nonEmptyRows;
+      dataRowStyles = nonEmptyIndices.map(idx => rowStylesList[idx] || {});
     }
 
     // Check if table contains at least some content
@@ -160,6 +204,7 @@ export function extractTablesFromHtml(
       name: tableName,
       headers,
       rows: dataRows,
+      rowStyles: dataRowStyles,
       rowCount: dataRows.length,
       colCount: maxCols,
       rawHtmlSnippet: $table.clone().empty().prop('outerHTML') || ''

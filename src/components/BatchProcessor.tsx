@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { translations } from '../utils/i18n.js';
 import { BatchUrlItem, ExtractionOptions, ExtractedTable } from '../types/table.js';
 import { createMergedCsv, tableToCsv, sanitizeFilename, downloadFile } from '../utils/csvExporter.js';
+import { exportBatchToXlsx } from '../utils/excelExporter.js';
 import JSZip from 'jszip';
 import {
   Layers,
@@ -373,6 +374,23 @@ END OF LOG REPORT
     downloadFile(mergedContent, filename, 'text/csv;charset=utf-8;');
   };
 
+  // Download Merged Excel (.xlsx) with Preserved Colors & Formats
+  const handleDownloadMergedXlsx = () => {
+    const successItems = items.filter(
+      item => item.status === 'success' && (item.tables?.length || 0) > 0
+    );
+    if (successItems.length === 0) return;
+
+    exportBatchToXlsx(
+      successItems.map(item => ({
+        url: item.url,
+        pageTitle: item.pageTitle,
+        tables: item.tables || [],
+      })),
+      `batch_tables_styled_${new Date().toISOString().slice(0, 10)}.xlsx`
+    );
+  };
+
   return (
     <div className="space-y-4">
       {/* URL Input Form */}
@@ -527,6 +545,17 @@ END OF LOG REPORT
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>{t.batchDownloadMergedCsv}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadMergedXlsx}
+                    disabled={isRunning}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-medium text-xs rounded-lg transition-colors shadow-xs cursor-pointer"
+                    title="Download styled Excel workbook (.xlsx) with preserved row colors and multiple worksheets"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <span>Download Excel (.xlsx)</span>
                   </button>
                 </>
               )}
