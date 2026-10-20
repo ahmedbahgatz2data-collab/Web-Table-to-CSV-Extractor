@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { extractTablesFromHtml } from './src/utils/tableExtractor.js';
+import { fetchWithStealth, fetchStandard, type HopTraceItem } from './src/server/stealthFetcher.js';
 import { GoogleGenAI } from '@google/genai';
 
 dotenv.config();
@@ -33,6 +34,8 @@ app.post('/api/extract', async (req, res) => {
     let targetHtml = '';
     let resolvedTitle = '';
     let sourceUrl = '';
+    let hopTrace: HopTraceItem[] = [];
+    let usedStealth = false;
 
     if (url && typeof url === 'string') {
       let fetchUrl = url.trim();
@@ -50,60 +53,44 @@ app.post('/api/extract', async (req, res) => {
       }
 
       sourceUrl = fetchUrl;
+      const useStealth = options.stealthMode !== false; // Enabled by default as requested
 
-      // Fetch with desktop browser headers
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 18000);
+      const fetchResult = useStealth
+        ? await fetchWithStealth(fetchUrl, { maxHops: 10, timeoutMs: 22000 })
+        : await fetchStandard(fetchUrl, 18000);
 
-      try {
-        const response = await fetch(fetchUrl, {
-          signal: controller.signal,
-          headers: {
-            'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Accept':
-              'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-            'Accept-Language': 'ar,en-US;q=0.9,en;q=0.8',
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache',
-          },
-        });
+      hopTrace = fetchResult.hops;
+      usedStealth = fetchResult.usedStealth;
 
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          return res.status(400).json({
-            success: false,
-            error: `تعذر جلب الصفحة (HTTP ${response.status}: ${response.statusText}). قد تمنع الصفحة الوصول المباشر. يمكنك نسخ كود HTML ولصقه يدوياً في خانة كود HTML.`
-          });
-        }
-
-        targetHtml = await response.text();
-      } catch (fetchErr: unknown) {
-        clearTimeout(timeoutId);
-        const err = fetchErr as Error;
-        const isTimeout = err.name === 'AbortError';
-        return res.status(500).json({
+      if (!fetchResult.success && (!fetchResult.html || !fetchResult.html.includes('<table'))) {
+        return res.status(400).json({
           success: false,
-          error: isTimeout
-            ? 'انتهت مهلة الاتصال بالصفحة (Connection timed out). يمكنك محاولة لصق كود HTML مباشرة.'
-            : `فشل الاتصال بالموقع (${err.message || 'Network error'}). يمكنك نسخ محتوى الصفحة ولصقه في تبويب "لصق HTML".`
+          error:
+            fetchResult.error ||
+            `تعذر جلب الصفحة (HTTP ${fetchResult.statusCode}). قد تمنع الصفحة الوصول المباشر أو تتطلب تحققاً بشرياً. يمكنك نسخ كود HTML ولصقه يدوياً في خانة كود HTML.`,
+          hops: fetchResult.hops,
+          usedStealth: fetchResult.usedStealth,
         });
       }
+
+      targetHtml = fetchResult.html;
+      sourceUrl = fetchResult.finalUrl || fetchUrl;
     } else if (html && typeof html === 'string') {
       targetHtml = html;
       sourceUrl = 'HTML Snippet';
     } else {
       return res.status(400).json({
         success: false,
-        error: 'يرجى تزويد رابط صفحة ويب أو كود HTML لاستخراج الجداول منه.'
+        error: 'يرجى تزويد رابط صفحة ويب أو كود HTML لاستخراج الجداول منه.',
       });
     }
 
     if (!targetHtml || targetHtml.trim().length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'المحتوى المستلم فارغ، لم يتم العثور على أي كود صفحة.'
+        error: 'المحتوى المستلم فارغ، لم يتم العثور على أي كود صفحة.',
+        hops: hopTrace,
+        usedStealth,
       });
     }
 
@@ -117,6 +104,8 @@ app.post('/api/extract', async (req, res) => {
       sourceUrl,
       tableCount: result.tables.length,
       tables: result.tables,
+      hops: hopTrace,
+      usedStealth,
     });
   } catch (error: unknown) {
     const err = error as Error;

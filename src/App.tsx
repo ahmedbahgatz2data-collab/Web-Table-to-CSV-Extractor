@@ -221,31 +221,29 @@ export default function App() {
                 key={selectedTable.id}
                 table={selectedTable}
                 onUpdateTable={handleUpdateTable}
-                onDownloadAllByTitle={
-                  batchItems.length > 0
-                    ? (title, format) => {
-                        const successBatch = batchItems.filter(item => item.status === 'success');
-                        if (format === 'xlsx') {
-                          exportTablesByTitleToXlsx(
-                            successBatch,
-                            title,
-                            `merged_batch_${sanitizeFilename(title)}_${new Date().toISOString().slice(0, 10)}.xlsx`
-                          );
-                        } else {
-                          const mergedContent = createMergedCsvByTableTitle(
-                            successBatch,
-                            title,
-                            { delimiter: ',', includeBom: true }
-                          );
-                          downloadFile(
-                            mergedContent,
-                            `merged_batch_${sanitizeFilename(title)}.csv`,
-                            'text/csv;charset=utf-8;'
-                          );
-                        }
-                      }
-                    : undefined
-                }
+                onDownloadAllByTitle={(title, format) => {
+                  const successBatch = batchItems.filter(item => item.status === 'success');
+                  if (successBatch.length === 0) return;
+                  
+                  if (format === 'xlsx') {
+                    exportTablesByTitleToXlsx(
+                      successBatch,
+                      title,
+                      `merged_batch_${sanitizeFilename(title)}_${new Date().toISOString().slice(0, 10)}.xlsx`
+                    );
+                  } else {
+                    const mergedContent = createMergedCsvByTableTitle(
+                      successBatch,
+                      title,
+                      { delimiter: ',', includeBom: true }
+                    );
+                    downloadFile(
+                      mergedContent,
+                      `merged_batch_${sanitizeFilename(title)}.csv`,
+                      'text/csv;charset=utf-8;'
+                    );
+                  }
+                }}
               />
             )}
           </div>

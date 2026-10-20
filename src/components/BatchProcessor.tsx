@@ -21,6 +21,8 @@ import {
   RefreshCw,
   Trash2,
   FileText,
+  Route,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface BatchProcessorProps {
@@ -116,6 +118,7 @@ export const BatchProcessor: React.FC<BatchProcessorProps> = ({
           pageTitle: data.pageTitle || 'Web Page',
           tables: extractedTables,
           tableCount: extractedTables.length,
+          hops: data.hops || [],
           error: undefined,
         };
 
@@ -313,6 +316,12 @@ Total Tables Found: ${totalTablesCount}
         report += `  Target URL:     ${item.url}\n`;
         report += `  Page Title:     ${item.pageTitle || 'Untitled Page'}\n`;
         report += `  Tables Found:   ${item.tables?.length || 0}\n`;
+        if (item.hops && item.hops.length > 0) {
+          report += `  HopTrace (${item.hops.length} Hops):\n`;
+          item.hops.forEach(h => {
+            report += `    Hop ${h.hop}: [HTTP ${h.statusCode}] ${h.url}${h.redirectLocation ? ` -> ${h.redirectLocation}` : ''} (${h.timingMs || 0}ms)\n`;
+          });
+        }
         if (item.tables && item.tables.length > 0) {
           item.tables.forEach((t, tIdx) => {
             report += `    Table ${tIdx + 1}: "${t.name}" -> ${t.rowCount} rows, ${t.colCount} columns\n`;
@@ -639,6 +648,27 @@ END OF LOG REPORT
 
                 {/* Status & Preview Affordance */}
                 <div className="flex items-center gap-2 shrink-0">
+                  {item.hops && item.hops.length > 0 && (
+                    <span
+                      className="font-mono text-[10px] text-indigo-700 bg-indigo-50/90 px-2 py-0.5 rounded border border-indigo-200 flex items-center gap-1 cursor-help"
+                      title={item.hops
+                        .map(
+                          (h) =>
+                            `Hop ${h.hop}: [${h.statusCode}] ${h.url}${
+                              h.redirectLocation ? ` → ${h.redirectLocation}` : ''
+                            } (${h.timingMs || 0}ms)`
+                        )
+                        .join('\n')}
+                    >
+                      <Route className="w-3 h-3 text-indigo-500" />
+                      <span>
+                        {item.hops.length > 1
+                          ? `${item.hops.length} Hops (${item.hops.map((h) => h.statusCode).join('→')})`
+                          : 'Direct (1 Hop)'}
+                      </span>
+                    </span>
+                  )}
+
                   {item.status === 'success' && (
                     <span className="font-mono text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
                       {item.tableCount} tables

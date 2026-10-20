@@ -10,6 +10,8 @@ import {
   Loader2,
   ArrowRight,
   Sparkles,
+  ShieldCheck,
+  Shield,
 } from 'lucide-react';
 
 interface ExtractorInputProps {
@@ -39,6 +41,7 @@ export const ExtractorInput: React.FC<ExtractorInputProps> = ({
     extractLinks: false,
     autoDetectHeaders: true,
     minRows: 1,
+    stealthMode: true,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -113,6 +116,35 @@ export const ExtractorInput: React.FC<ExtractorInputProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Quick Stealth Mode Toggle */}
+          <button
+            type="button"
+            onClick={() =>
+              setOptions((prev) => ({
+                ...prev,
+                stealthMode: prev.stealthMode === false ? true : false,
+              }))
+            }
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
+              options.stealthMode !== false
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-800 shadow-2xs hover:bg-emerald-100'
+                : 'bg-slate-100 border-slate-300 text-slate-600 hover:bg-slate-200'
+            }`}
+            title="Toggle Stealth Mode (Apify got-scraping + HTTP/2 + HopTrace)"
+          >
+            {options.stealthMode !== false ? (
+              <>
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Stealth Mode: ON</span>
+              </>
+            ) : (
+              <>
+                <Shield className="w-3.5 h-3.5 text-slate-400" />
+                <span>Stealth Mode: OFF</span>
+              </>
+            )}
+          </button>
+
           <button
             type="button"
             onClick={() => setShowOptions(!showOptions)}
@@ -140,6 +172,39 @@ export const ExtractorInput: React.FC<ExtractorInputProps> = ({
       {/* Options Drawer (Global across tabs) */}
       {showOptions && (
         <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+          {/* Stealth Mode Feature Banner */}
+          <div className="sm:col-span-2 md:col-span-4 p-3.5 bg-gradient-to-r from-emerald-50/90 via-teal-50/60 to-blue-50/90 border border-emerald-200 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-start gap-2.5">
+              <div className="p-1.5 bg-emerald-600 text-white rounded-md shrink-0 mt-0.5 shadow-2xs">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-slate-900 text-xs sm:text-sm">
+                    Stealth Mode (Apify got-scraping + HTTP/2 + HopTrace)
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full border border-emerald-300">
+                    {options.stealthMode !== false ? 'Active · Anti-Bot Bypass' : 'Disabled · Normal Fetch'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                  تجاوز حظر المواقع عبر محاكاة بصمة متصفح حقيقي (Chrome / Edge TLS JA3) + تفعيل HTTP/2 + تتبع مسار التحويلات قفزة بقفزة (HopTrace حتى 10 قفزات) لتجاوز حظر Cloudflare و Akamai.
+                </p>
+              </div>
+            </div>
+
+            <label className="relative inline-flex items-center cursor-pointer shrink-0 self-end sm:self-center">
+              <input
+                type="checkbox"
+                checked={options.stealthMode !== false}
+                onChange={(e) =>
+                  setOptions({ ...options, stealthMode: e.target.checked })
+                }
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+            </label>
+          </div>
           <label className="flex items-center gap-2.5 cursor-pointer">
             <input
               type="checkbox"

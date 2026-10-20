@@ -30,7 +30,7 @@ import {
 interface TableEditorProps {
   table: ExtractedTable;
   onUpdateTable: (updatedTable: ExtractedTable) => void;
-  onDownloadAllByTitle?: (title: string, format: 'xlsx' | 'csv') => void;
+  onDownloadAllByTitle: (title: string, format: 'xlsx' | 'csv') => void;
 }
 
 export const TableEditor: React.FC<TableEditorProps> = ({
@@ -315,7 +315,6 @@ export const TableEditor: React.FC<TableEditorProps> = ({
 
         {/* Primary Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          {onDownloadAllByTitle && (
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={() => onDownloadAllByTitle(table.name, 'xlsx')}
@@ -333,7 +332,6 @@ export const TableEditor: React.FC<TableEditorProps> = ({
                 <span>All '{table.name}' (CSV)</span>
               </button>
             </div>
-          )}
 
 
           {/* Download Excel (.xlsx) with Preserved Colors */}

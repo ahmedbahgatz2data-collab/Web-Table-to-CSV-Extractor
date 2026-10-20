@@ -76,6 +76,17 @@ export const HelpGuideModal: React.FC<HelpGuideModalProps> = ({
               If data is formatted using non-table divs, article bullet points, or complex layouts, use the AI Parser to intelligently structure it into standard tabular rows and columns.
             </p>
           </div>
+
+          {/* Section 5: Stealth Mode */}
+          <div className="space-y-1.5 p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl">
+            <h4 className="text-sm font-bold text-emerald-950 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>5. Stealth Mode (Apify got-scraping & HopTrace)</span>
+            </h4>
+            <p className="text-emerald-900">
+              يستخدم التطبيق محرك <strong>got-scraping</strong> المطور بواسطة Apify لمحاكاة بصمة المتصفحات الحديثة (Chrome و Edge على Windows/macOS) مع تفعيل HTTP/2، وترويسات مطابقة للمتصفحات الحقيقية، وتتبع قفزات التحويل (HopTrace) حتى 10 قفزات لمعالجة الروابط التلقائية والنسبية وتخطي أنظمة الحماية ومكافحة البوتات مثل Cloudflare و Akamai.
+            </p>
+          </div>
         </div>
 
         {/* Footer */}

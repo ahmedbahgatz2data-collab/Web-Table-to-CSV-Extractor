@@ -180,7 +180,7 @@ export function extractTablesFromHtml(
     // Separate headers from data rows
     let headers: string[] = [];
     let dataRows: string[][] = [];
-    let dataRowStyles: { className?: string; color?: string; bgColor?: string; tag?: string }[] = [];
+    let dataRowStyles: { className?: string; color?: string; bgColor?: string; tag?: string; hexBg?: string; hexColor?: string }[] = [];
 
     // Check if the table has explicit <th> or the first row acts as header
     const hasTheadTh = $table.find('thead th').length > 0 || $table.find('tr:first-child th').length > 0;

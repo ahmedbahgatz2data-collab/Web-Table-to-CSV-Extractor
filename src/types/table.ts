@@ -16,12 +16,21 @@ export interface ExtractedTable {
   rawHtmlSnippet?: string;
 }
 
+export interface HopTraceItem {
+  hop: number;
+  url: string;
+  statusCode: number;
+  redirectLocation?: string;
+  timingMs?: number;
+}
+
 export interface ExtractionResult {
   sourceType: 'url' | 'html';
   sourceUrl?: string;
   pageTitle: string;
   tables: ExtractedTable[];
   extractedAt: string;
+  hops?: HopTraceItem[];
 }
 
 export interface ExtractionOptions {
@@ -31,6 +40,7 @@ export interface ExtractionOptions {
   autoDetectHeaders: boolean;
   targetHeaderKeyword?: string;
   extractRowStatus?: boolean;
+  stealthMode?: boolean; // Apify got-scraping + TLS/HTTP2 + HopTrace
 }
 
 export interface CsvExportOptions {
@@ -48,6 +58,7 @@ export interface BatchUrlItem {
   tables: ExtractedTable[];
   error?: string;
   tableCount?: number;
+  hops?: HopTraceItem[];
 }
 
 export interface BatchProcessingSummary {
