@@ -148,28 +148,34 @@ export function extractTablesFromHtml(
     });
 
     // Normalize grid: make all rows have uniform length
-    if (grid.length === 0) return;
+    if (!grid || grid.length === 0) return;
 
     let maxCols = 0;
-    for (const row of grid) {
-      if (row.length > maxCols) maxCols = row.length;
+    for (let r = 0; r < grid.length; r++) {
+      const row = grid[r];
+      if (row && row.length > maxCols) {
+        maxCols = row.length;
+      }
     }
     if (maxCols === 0) return;
 
-    // Fill missing positions with empty string
-    const normalizedRows: string[][] = grid.map(row => {
+    // Fill missing positions with empty string, safely handling any sparse array gaps
+    const normalizedRows: string[][] = [];
+    for (let r = 0; r < grid.length; r++) {
+      const row = grid[r] || [];
       const newRow: string[] = [];
       for (let c = 0; c < maxCols; c++) {
-        newRow[c] = row[c] ?? '';
+        const val = row[c];
+        newRow[c] = val !== undefined && val !== null ? String(val) : '';
       }
-      return newRow;
-    });
+      normalizedRows.push(newRow);
+    }
 
     // Filter out completely empty rows and track their style indices
     const nonEmptyIndices: number[] = [];
     const nonEmptyRows: string[][] = [];
     normalizedRows.forEach((row, idx) => {
-      if (row.some(cell => cell.trim().length > 0)) {
+      if (row && row.some(cell => (cell || '').trim().length > 0)) {
         nonEmptyRows.push(row);
         nonEmptyIndices.push(idx);
       }
@@ -186,7 +192,7 @@ export function extractTablesFromHtml(
     const hasTheadTh = $table.find('thead th').length > 0 || $table.find('tr:first-child th').length > 0;
 
     if (autoDetectHeaders && (hasTheadTh || nonEmptyRows.length > 1)) {
-      headers = nonEmptyRows[0].map((h, i) => h.trim() || `Column ${i + 1}`);
+      headers = (nonEmptyRows[0] || []).map((h, i) => (h || '').trim() || `Column ${i + 1}`);
       dataRows = nonEmptyRows.slice(1);
       dataRowStyles = nonEmptyIndices.slice(1).map(idx => rowStylesList[idx] || {});
     } else {
